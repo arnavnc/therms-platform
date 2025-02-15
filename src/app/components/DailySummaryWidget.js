@@ -20,10 +20,15 @@ export default function DailySummaryWidget({ shoeId }) {
         const shoeDoc = await getDoc(doc(db, 'shoes', shoeId));
         if (shoeDoc.exists()) {
           const shoeData = shoeDoc.data();
+          
+          // Get last 10 timestamps or all if less than 10
           const recentTemps = shoeData.temperature.slice(-20);
           const recentStimulus = shoeData.stimulus.slice(-20);
+          
+          // Calculate average temperature
           const avgTemp = recentTemps.reduce((acc, curr) => acc + curr.temp, 0) / recentTemps.length;
           
+          // Calculate heating and cooling hours
           let heating = 0;
           let cooling = 0;
           
@@ -32,6 +37,7 @@ export default function DailySummaryWidget({ shoeId }) {
             if (item.state === 1) cooling += 0.25; // 15 minutes
           });
           
+          // Calculate net heat (positive means more heating, negative means more cooling)
           const netHeat = heating - cooling;
           
           setStats({
