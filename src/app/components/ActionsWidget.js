@@ -73,7 +73,7 @@ export default function ActionsWidget({ shoeId }) {
           {actions.map((action) => (
             <div key={action.id} className="p-4 bg-white rounded-lg border border-gray-100">
               <div className="flex justify-between items-start mb-2">
-                <span className="text-sm font-medium capitalize">{action.type}</span>
+                <span className="text-sm font-bold capitalize text-black">{action.type}</span>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   action.urgency === 'immediate' ? 'bg-red-100 text-red-600' :
                   action.urgency === 'scheduled' ? 'bg-yellow-100 text-yellow-600' :
