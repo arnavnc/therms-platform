@@ -6,7 +6,7 @@ import Navbar from '../components/Navbar';
 import TemperatureChart from '../components/TemperatureChart';
 import StimulusChart from '../components/StimulusChart';
 import InsightsWidget from '../components/InsightsWidget';
-// import ActionsWidget from '../components/ActionsWidget';
+import ActionsWidget from '../components/ActionsWidget';
 import { withAuth } from '../lib/withAuth';
 import DailySummaryWidget from '../components/DailySummaryWidget';
 
@@ -90,7 +90,7 @@ function Dashboard() {
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <h2 className="text-lg font-semibold mb-4 text-gray-800">Actions</h2>
-              {/* <ActionsWidget /> */}
+              <ActionsWidget />
             </div>
           </div>
         </div>
