@@ -9,7 +9,7 @@ import InsightsWidget from '../components/InsightsWidget';
 import ActionsWidget from '../components/ActionsWidget';
 import { withAuth } from '../lib/withAuth';
 import DailySummaryWidget from '../components/DailySummaryWidget';
-
+import TerraWidget from '../components/TerraWidget';
 function Dashboard() {
   const [userData, setUserData] = useState(null);
   const [selectedShoeId, setSelectedShoeId] = useState(null);

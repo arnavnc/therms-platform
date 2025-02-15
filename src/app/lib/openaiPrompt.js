@@ -18,34 +18,29 @@ function createHealthPrompt(data) {
         - Mild Concern: **Below 28°C or Above 35°C for > 10 minutes**
         - Moderate Concern: **Below 26°C or Above 37°C for > 15 minutes**
         - Severe Concern: **Below 24°C or Above 39°C for > 20 minutes**
-      - **Cross-checking Data:**
-        - If foot temperature is abnormal but heart rate and activity level are stable, issue a low-severity insight.
-        - If abnormal temperature coincides with **high heart rate (>120 bpm) or low activity**, increase severity.
-        - If abnormal temperature and **abnormal heating/cooling responses (e.g., excessive heating needed despite normal temp)** are observed, increase severity.
-      - **Bias Control:**
-        - Avoid assigning **"alert" severity unless multiple critical thresholds** are crossed.
-        - Provide a **balanced range of insights**, ensuring both normal and abnormal trends are highlighted.
-      
+
+      **Insight Types Must Be One Of:**
+      - "temperature" (for direct temperature readings)
+      - "circulation" (for blood flow related insights)
+      - "nerve" (for nerve function related insights)
+      - "condition" (for overall health condition insights)
+      - "health" (for general health insights)
+      - "activity" (for movement/exercise related insights)
+
       **Action Guidelines:**
       - Actions must be executable by an AI agent in a web browser
       - Each action should include detailed step-by-step instructions
       - Valid action types are limited to:
-        - 'schedule' (booking appointments/consultations)
-        - 'research' (finding relevant medical information)
-        - 'purchase' (finding and comparing medical supplies/equipment)
-        - 'notify' (sending notifications/reminders)
-      - Each action should include:
-        - Specific URLs or web services to use
-        - Required form fields and their values
-        - Expected outcomes and success criteria
-        - Fallback steps if primary action fails
+        - 'appointment' (booking medical appointments/consultations)
+        - 'medication' (finding and comparing medications)
+        - 'adjustment' (adjusting settings or behaviors)
       
       **Output Structure:**
       {
         "status": "normal|warning|alert",
         "insights": [
           {
-            "type": "temperature|health|activity",
+            "type": "temperature|circulation|nerve|condition|health|activity",
             "severity": "low|medium|high",
             "description": "detailed explanation",
             "recommendation": "specific action"
@@ -53,7 +48,7 @@ function createHealthPrompt(data) {
         ],
         "actions": [
           {
-            "type": "schedule|research|purchase|notify",
+            "type": "appointment|medication|adjustment",
             "urgency": "immediate|scheduled|optional",
             "details": "detailed step-by-step instructions",
             "parameters": {
@@ -196,15 +191,11 @@ export function validateOpenAIResponse(response) {
     const validUrgencies = ['immediate', 'scheduled', 'optional'];
     const validTypes = [
       // Health types
-      'temperature', 'health', 'activity', 'circulation', 'nerve', 'condition',
-      // Performance types
-      'endurance', 'intensity', 'technique'
+      'temperature', 'circulation', 'nerve', 'condition', 'health', 'activity'
     ];
     const validActionTypes = [
       // Health actions
-      'appointment', 'medication', 'adjustment',
-      // Performance actions
-      'training', 'recovery', 'equipment'
+      'appointment', 'medication', 'adjustment'
     ];
 
     // Check required fields
