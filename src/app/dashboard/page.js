@@ -15,6 +15,29 @@ function Dashboard() {
   const [selectedShoeId, setSelectedShoeId] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserData(data);
+            // Set first shoe as default if available
+            if (data.shoes && data.shoes.length > 0) {
+              setSelectedShoeId(data.shoes[0].id);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
