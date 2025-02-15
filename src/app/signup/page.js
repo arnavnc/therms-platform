@@ -15,7 +15,7 @@ export default function Signup() {
     age: '',
     sex: '',
     healthConditions: [],
-    insightPreference: 'health' // Added default preference
+    insightPreference: 'health'
   });
   const [error, setError] = useState('');
   const router = useRouter();
@@ -167,7 +167,7 @@ export default function Signup() {
               </label>
               <HealthConditionsInput 
                 conditions={formData.healthConditions} 
-                setConditions={(conditions) => setFormData({ ...formData, healthConditions })}
+                setConditions={(conditions) => setFormData({ ...formData, healthConditions: conditions })}
               />
             </div>
 

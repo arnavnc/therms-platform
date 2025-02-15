@@ -36,8 +36,9 @@ export default function InsightsWidget({ shoeId }) {
         const hoursDiff = timeDiff / (1000 * 60 * 60);
 
         if (hoursDiff < 24) {
-          setInsights(storedInsights.data);
-          // Calculate time until next update
+          // Only set insights data, excluding actions
+          const { actions, ...insightsWithoutActions } = storedInsights.data;
+          setInsights(insightsWithoutActions);
           const nextUpdateTime = new Date(lastGenerated.getTime() + (24 * 60 * 60 * 1000));
           setNextUpdate(nextUpdateTime);
           setLoading(false);
@@ -45,7 +46,7 @@ export default function InsightsWidget({ shoeId }) {
         }
       }
 
-      // Generate new insights if none exist or they're old
+      // Generate new insights
       const response = await fetch('/api/insights', {
         method: 'POST',
         headers: {
@@ -63,32 +64,26 @@ export default function InsightsWidget({ shoeId }) {
         throw new Error(data.message || data.error);
       }
 
-      // Add IDs to new actions
-      const actionsWithIds = data.actions.map(action => ({
-        ...action,
-        id: Math.random().toString(36).substring(2, 15),
-        createdAt: new Date().toISOString(),
-        status: 'pending'
-      }));
-
-      // Merge with existing actions or create new array
-      const existingActions = userData.actions || [];
-      const updatedActions = [...existingActions, ...actionsWithIds];
-
       // Store new insights and actions in Firebase
       await updateDoc(doc(db, 'users', user.uid), {
-        actions: updatedActions,
+        actions: [...(userData.actions || []), ...data.actions.map(action => ({
+          ...action,
+          id: Math.random().toString(36).substring(2, 15),
+          createdAt: new Date().toISOString(),
+          status: 'pending'
+        }))],
         insights: {
           ...userData.insights,
           [shoeId]: {
-            data: { ...data, actions: actionsWithIds },
+            data: data,
             generatedAt: now.toISOString()
           }
         }
       });
 
-      // Update local state
-      setInsights({ ...data, actions: actionsWithIds });
+      // Only set insights data, excluding actions
+      const { actions, ...insightsWithoutActions } = data;
+      setInsights(insightsWithoutActions);
       setNextUpdate(new Date(now.getTime() + (24 * 60 * 60 * 1000)));
     } catch (err) {
       console.error('Insights Error:', err);
@@ -187,25 +182,6 @@ export default function InsightsWidget({ shoeId }) {
                 <p className="text-sm font-medium">
                   Recommendation: {insight.recommendation}
                 </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">Recommended Actions</h3>
-            {insights.actions.map((action, index) => (
-              <div key={index} className="p-4 bg-white rounded-lg border border-gray-100">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-sm font-bold capitalize text-gray-800">{action.type}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    action.urgency === 'immediate' ? 'bg-red-100 text-red-600' :
-                    action.urgency === 'scheduled' ? 'bg-yellow-100 text-yellow-600' :
-                    'bg-green-100 text-green-600'
-                  }`}>
-                    {action.urgency}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">{action.details}</p>
               </div>
             ))}
           </div>
