@@ -155,7 +155,29 @@ Performance Metrics:
 }
 
 export function createAnalysisPrompt(data, preference) {
-  let basePrompt = `Analyze this health-focused data:
+  // First create the wearable data section
+  const wearableDataSection = data.health ? `
+Wearable Device Data:
+- Heart Rate: 
+  * Average: ${data.health.heart_rate_data.summary.avg_hr_bpm || 'Not available'} BPM
+  * Max: ${data.health.heart_rate_data.summary.max_hr_bpm || 'Not available'} BPM
+  * Min: ${data.health.heart_rate_data.summary.min_hr_bpm || 'Not available'} BPM
+  * Resting: ${data.health.heart_rate_data.summary.resting_hr_bpm || 'Not available'} BPM
+- Activity:
+  * Total Activity Time: ${data.health.active_durations_data.activity_seconds || 'Not available'} seconds
+  * Low Intensity: ${data.health.active_durations_data.low_intensity_seconds || '0'} seconds
+  * Moderate Intensity: ${data.health.active_durations_data.moderate_intensity_seconds || '0'} seconds
+  * Vigorous Intensity: ${data.health.active_durations_data.vigorous_intensity_seconds || '0'} seconds
+- Movement:
+  * Distance: ${data.health.distance_data.distance_meters || 'Not available'} meters
+  * Steps: ${data.health.distance_data.steps || 'Not available'} steps
+- Calories:
+  * Total Burned: ${data.health.calories_data.total_burned_calories || 'Not available'} calories
+  * Active: ${data.health.calories_data.net_activity_calories || 'Not available'} calories` 
+  : 'No wearable data available';
+
+  // Then construct the full prompt
+  const basePrompt = `Analyze this health-focused data:
 
 User Profile:
 - Age: ${data.user?.age || 'Not specified'}
@@ -166,65 +188,9 @@ User Profile:
 
 Shoe Data:
 - Temperature Readings: ${JSON.stringify(data.shoe?.temperature || [])}
-- Stimulus Data: ${JSON.stringify(data.shoe?.stimulus || [])}`;
+- Stimulus Data: ${JSON.stringify(data.shoe?.stimulus || [])}
 
-  // Only add health data if it exists and has valid data
-  if (data.health) {
-    let healthData = '\n\nWearable Device Data:';
-    
-    // Heart Rate Data
-    if (data.health.heartRate?.summary) {
-      healthData += `\nHeart Rate Summary:`;
-      if (data.health.heartRate.summary.avg_hr_bpm) {
-        healthData += `\n- Average: ${data.health.heartRate.summary.avg_hr_bpm} BPM`;
-      }
-      if (data.health.heartRate.summary.max_hr_bpm) {
-        healthData += `\n- Max: ${data.health.heartRate.summary.max_hr_bpm} BPM`;
-      }
-      if (data.health.heartRate.summary.min_hr_bpm) {
-        healthData += `\n- Min: ${data.health.heartRate.summary.min_hr_bpm} BPM`;
-      }
-    }
-
-    // Movement Data
-    if (data.health.movement) {
-      healthData += `\n\nMovement Summary:`;
-      if (data.health.movement.distance) {
-        healthData += `\n- Distance: ${data.health.movement.distance} meters`;
-      }
-      if (data.health.movement.steps) {
-        healthData += `\n- Steps: ${data.health.movement.steps}`;
-      }
-    }
-
-    // Activity Data
-    if (data.health.activity) {
-      healthData += `\n\nActivity Summary:`;
-      if (data.health.activity.duration) {
-        healthData += `\n- Total Duration: ${data.health.activity.duration} seconds`;
-      }
-      if (data.health.activity.intensities) {
-        healthData += `\n- Low Intensity: ${data.health.activity.intensities.low} seconds`;
-        healthData += `\n- Moderate Intensity: ${data.health.activity.intensities.moderate} seconds`;
-        healthData += `\n- Vigorous Intensity: ${data.health.activity.intensities.vigorous} seconds`;
-      }
-    }
-
-    // Calories Data
-    if (data.health.calories) {
-      healthData += `\n\nCalories Summary:`;
-      if (data.health.calories.total) {
-        healthData += `\n- Total Burned: ${data.health.calories.total} calories`;
-      }
-      if (data.health.calories.active) {
-        healthData += `\n- Active Calories: ${data.health.calories.active} calories`;
-      }
-    }
-
-    basePrompt += healthData;
-  } else {
-    basePrompt += '\n\nNote: No wearable device data available for this time period.';
-  }
+${wearableDataSection}`;
 
   return {
     messages: [

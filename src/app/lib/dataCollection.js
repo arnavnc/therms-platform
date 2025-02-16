@@ -67,26 +67,42 @@ export async function collectUserData(userId, shoeId) {
         
         
         data.health = {
-          heartRate: terraData.data?.[0]?.heart_data?.heart_rate || null,
-          movement: {
-            distance: terraData.data?.[0]?.distance_data?.distance_meters || null,
-            steps: terraData.data?.[0]?.steps || null,
-            speedSamples: terraData.data?.[0]?.speed_samples || []
-          },
-          activity: {
-            activitySeconds: terraData.data?.[0]?.activity_seconds || null,
-            activityLevels: terraData.data?.[0]?.activity_levels || null,
-            intensities: {
-              low: terraData.data?.[0]?.activity_seconds_low || 0,
-              moderate: terraData.data?.[0]?.activity_seconds_med || 0,
-              vigorous: terraData.data?.[0]?.activity_seconds_high || 0
+          heart_rate_data: {
+            summary: {
+              avg_hr_bpm: terraData.data?.[0]?.heart_rate_data?.summary?.avg_hr_bpm || null,
+              max_hr_bpm: terraData.data?.[0]?.heart_rate_data?.summary?.max_hr_bpm || null,
+              min_hr_bpm: terraData.data?.[0]?.heart_rate_data?.summary?.min_hr_bpm || null,
+              resting_hr_bpm: terraData.data?.[0]?.heart_rate_data?.summary?.resting_hr_bpm || null,
+            },
+            detailed: {
+              hr_samples: terraData.data?.[0]?.heart_rate_data?.detailed?.hr_samples || []
             }
           },
-          calories: {
-            total: terraData.data?.[0]?.calories_total || null,
-            active: terraData.data?.[0]?.calories_active || null
+          distance_data: {
+            distance_meters: terraData.data?.[0]?.distance_data?.distance_meters || null,
+            steps: terraData.data?.[0]?.distance_data?.steps || null,
+            detailed: {
+              step_samples: terraData.data?.[0]?.distance_data?.detailed?.step_samples || [],
+              distance_samples: terraData.data?.[0]?.distance_data?.detailed?.distance_samples || []
+            }
+          },
+          active_durations_data: {
+            activity_seconds: terraData.data?.[0]?.active_durations_data?.activity_seconds || null,
+            rest_seconds: terraData.data?.[0]?.active_durations_data?.rest_seconds || null,
+            low_intensity_seconds: terraData.data?.[0]?.active_durations_data?.low_intensity_seconds || 0,
+            moderate_intensity_seconds: terraData.data?.[0]?.active_durations_data?.moderate_intensity_seconds || 0,
+            vigorous_intensity_seconds: terraData.data?.[0]?.active_durations_data?.vigorous_intensity_seconds || 0,
+            activity_levels_samples: terraData.data?.[0]?.active_durations_data?.activity_levels_samples || []
+          },
+          calories_data: {
+            total_burned_calories: terraData.data?.[0]?.calories_data?.total_burned_calories || null,
+            net_activity_calories: terraData.data?.[0]?.calories_data?.net_activity_calories || null,
+            calorie_samples: terraData.data?.[0]?.calories_data?.calorie_samples || []
           }
         };
+
+        console.log('Terra API Response:', terraData);
+        console.log('Formatted Health Data:', data.health);
 
         console.log('Terra data fetched:', data.health); 
 
@@ -98,7 +114,45 @@ export async function collectUserData(userId, shoeId) {
       data.health = null;
     }
 
+    // First create the wearable data section
+    const wearableDataSection = data.health ? `
+    Wearable Device Data:
+    - Heart Rate: 
+      * Average: ${data.health.heart_rate_data.summary.avg_hr_bpm || 'Not available'} BPM
+      * Max: ${data.health.heart_rate_data.summary.max_hr_bpm || 'Not available'} BPM
+      * Min: ${data.health.heart_rate_data.summary.min_hr_bpm || 'Not available'} BPM
+      * Resting: ${data.health.heart_rate_data.summary.resting_hr_bpm || 'Not available'} BPM
+    - Activity:
+      * Total Activity Time: ${data.health.active_durations_data.activity_seconds || 'Not available'} seconds
+      * Low Intensity: ${data.health.active_durations_data.low_intensity_seconds || '0'} seconds
+      * Moderate Intensity: ${data.health.active_durations_data.moderate_intensity_seconds || '0'} seconds
+      * Vigorous Intensity: ${data.health.active_durations_data.vigorous_intensity_seconds || '0'} seconds
+    - Movement:
+      * Distance: ${data.health.distance_data.distance_meters || 'Not available'} meters
+      * Steps: ${data.health.distance_data.steps || 'Not available'} steps
+    - Calories:
+      * Total Burned: ${data.health.calories_data.total_burned_calories || 'Not available'} calories
+      * Active: ${data.health.calories_data.net_activity_calories || 'Not available'} calories` 
+    : 'No wearable data available';
+
+    // Then construct the full prompt
+    const prompt = `Analyze this health-focused data:
+
+    User Profile:
+    - Age: ${data.user.age || 'Not specified'}
+    - Sex: ${data.user.sex || 'Not specified'}
+    - Height: ${data.user.height || 'Not specified'}cm
+    - Weight: ${data.user.weight || 'Not specified'}kg
+    - Health Conditions: ${data.user.healthConditions?.length ? data.user.healthConditions.join(", ") : "None reported"}
+
+    Shoe Data:
+    - Temperature Readings: ${JSON.stringify(data.shoe.temperature)}
+    - Stimulus Data: ${JSON.stringify(data.shoe.stimulus)}
+
+    ${wearableDataSection}`;
+
     console.log('Final data object:', data);
+    console.log('Final Prompt:', prompt);
     return data;
   } catch (error) {
     console.error('Error collecting user data:', error);

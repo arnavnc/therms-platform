@@ -37,7 +37,7 @@ export async function POST(request) {
     const completion = await openai.chat.completions.create({
       ...prompt,
       model: "gpt-4o",
-      temperature: 0.7,
+      temperature: 0.4,
       max_tokens: 1000
     });
     
