@@ -1,12 +1,9 @@
-'use client';
-
 import { ScrapybaraClient } from "scrapybara";
 import { anthropic } from "scrapybara/anthropic";
 import { UBUNTU_SYSTEM_PROMPT } from "scrapybara/prompts";
 import { computerTool, bashTool } from "scrapybara/tools";
 import { z } from "zod";
 import { NextResponse } from 'next/server';
-import { useEffect, useLayoutEffect } from 'react';
 
 const actionSchema = z.object({
   success: z.boolean().describe("Whether the action was successful"),
@@ -96,13 +93,5 @@ function generatePrompt(action, previousAttempt = null) {
 * For accessibility, you can use and create accounts for communication tools such as email, Discord, Telegram on behalf of the user - e.g. join Discord channels, send emails, etc.`;
   }
 }
-
-useEffect(() => {
-  // Access localStorage, window, etc here
-}, []);
-
-useLayoutEffect(() => {
-  // DOM measurements here
-}, []);
 
 new Date().toLocaleString('en-US', { timeZone: 'UTC' }); 
