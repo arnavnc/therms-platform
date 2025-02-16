@@ -43,10 +43,10 @@ export default function TerraWidget() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          reference_id: user.uid, // Use Firebase user ID as reference
+          reference_id: user.uid,
           providers: "GARMIN,FITBIT,OURA,WITHINGS,SUUNTO",
           language: "en",
-          auth_success_redirect_url: `${window.location.origin}/dashboard`,
+          auth_success_redirect_url: `${window.location.origin}/dashboard?terra_success=true`,
           auth_failure_redirect_url: `${window.location.origin}/dashboard?error=connection_failed`
         }),
       });
@@ -60,10 +60,15 @@ export default function TerraWidget() {
       // Store Terra session info in user's document
       await updateDoc(doc(db, 'users', user.uid), {
         terraSessionId: data.session_id,
-        terraSessionCreated: new Date().toISOString()
+        terraSessionCreated: new Date().toISOString(),
+        terraConnected: false
       });
 
-      // Redirect to Terra widget URL instead of displaying in iframe
+      // Store both session ID and reference ID in localStorage
+      localStorage.setItem('terraSessionId', data.session_id);
+      localStorage.setItem('terraReferenceId', user.uid);
+
+      // Redirect to Terra widget URL
       window.location.href = data.url;
     } catch (err) {
       console.error('Terra Widget Error:', err);

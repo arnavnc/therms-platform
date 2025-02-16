@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation';
 import Navbar from '../components/Navbar';
 import TemperatureChart from '../components/TemperatureChart';
 import StimulusChart from '../components/StimulusChart';
@@ -9,11 +10,13 @@ import InsightsWidget from '../components/InsightsWidget';
 import ActionsWidget from '../components/ActionsWidget';
 import { withAuth } from '../lib/withAuth';
 import DailySummaryWidget from '../components/DailySummaryWidget';
-import TerraWidget from '../components/TerraWidget';
+
 function Dashboard() {
   const [userData, setUserData] = useState(null);
   const [selectedShoeId, setSelectedShoeId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const [updateAttempted, setUpdateAttempted] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -37,6 +40,59 @@ function Dashboard() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const handleTerraConnection = async () => {
+      const terraSuccess = searchParams.get('terra_success');
+      const terraUserId = searchParams.get('user_id');
+      const sessionId = localStorage.getItem('terraSessionId');
+      const referenceId = localStorage.getItem('terraReferenceId');
+
+      console.log('Checking Terra connection...');
+      console.log({
+        terraSuccess,
+        terraUserId,
+        sessionId,
+        referenceId,
+        updateAttempted
+      });
+
+      if (terraSuccess === 'true' && terraUserId && sessionId && !updateAttempted) {
+        try {
+          console.log('Attempting to update Terra connection...');
+          
+          // Wait for auth to initialize
+          await new Promise((resolve) => {
+            const unsubscribe = auth.onAuthStateChanged((user) => {
+              unsubscribe();
+              resolve(user);
+            });
+          });
+
+          const user = auth.currentUser;
+          console.log('Current user:', user?.uid);
+
+          if (user) {
+            const userDocRef = doc(db, 'users', user.uid);
+            await updateDoc(userDocRef, {
+              terraId: terraUserId,
+              terraConnected: true
+            });
+            console.log('Successfully updated Terra connection');
+          }
+
+          // Clean up
+          localStorage.removeItem('terraSessionId');
+          localStorage.removeItem('terraReferenceId');
+          setUpdateAttempted(true);
+        } catch (error) {
+          console.error('Error updating Terra connection:', error);
+        }
+      }
+    };
+
+    handleTerraConnection();
+  }, [searchParams, updateAttempted]);
 
   if (loading) {
     return (
@@ -111,7 +167,7 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
-              <ActionsWidget />
+              <ActionsWidget shoeId={selectedShoeId} />
             </div>
           </div>
         </div>

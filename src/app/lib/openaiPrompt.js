@@ -5,81 +5,94 @@ const openai = new OpenAI({
 });
 
 function createHealthPrompt(data) {
-  return {
-    messages: [
-      {
-        role: "system",
-        content: `You are an AI health assistant specializing in analyzing foot temperature data from smart shoes. Your goal is to provide medically informed insights, correlating foot temperature trends with body thermoregulation, activity levels, and potential health conditions. 
-      
-      **Key Data Interpretation Guidelines:**
-      - **Core Concept:** Foot temperature reflects the body's thermoregulation: high foot temperature = heat dissipation, low foot temperature = heat conservation.
-      - **Thresholds for Severity Classification:**
-        - Normal Foot Temperature Range: **29°C to 34°C** (85°F to 93°F)
-        - Mild Concern: **Below 28°C or Above 35°C for > 10 minutes**
-        - Moderate Concern: **Below 26°C or Above 37°C for > 15 minutes**
-        - Severe Concern: **Below 24°C or Above 39°C for > 20 minutes**
-
-      **Insight Types Must Be One Of:**
-      - "temperature" (for direct temperature readings)
-      - "circulation" (for blood flow related insights)
-      - "nerve" (for nerve function related insights)
-      - "condition" (for overall health condition insights)
-      - "health" (for general health insights)
-      - "activity" (for movement/exercise related insights)
-
-      **Action Guidelines:**
-      - Actions must be executable by an AI agent in a web browser
-      - Each action should include detailed step-by-step instructions
-      - Valid action types are limited to:
-        - 'appointment' (booking medical appointments/consultations)
-        - 'medication' (finding and comparing medications)
-        - 'adjustment' (adjusting settings or behaviors)
-      
-      **Output Structure:**
-      {
-        "status": "normal|warning|alert",
-        "insights": [
-          {
-            "type": "temperature|circulation|nerve|condition|health|activity",
-            "severity": "low|medium|high",
-            "description": "detailed explanation",
-            "recommendation": "specific action"
-          }
-        ],
-        "actions": [
-          {
-            "type": "appointment|medication|adjustment",
-            "urgency": "immediate|scheduled|optional",
-            "details": "detailed step-by-step instructions",
-            "parameters": {
-              "urls": ["primary url", "fallback urls"],
-              "formData": {
-                "field1": "value1",
-                "field2": "value2"
-              },
-              "successCriteria": "what defines success",
-              "fallbackSteps": ["step1", "step2"]
-            }
-          }
-        ],
-        "summary": "brief overall assessment"
-      }`
-      },
-      {
-        role: "user",
-        content: `Analyze this health-focused data:
+  let promptContent = `Analyze this health-focused data:
 
 User Profile:
 - Age: ${data.user.age}
 - Sex: ${data.user.sex}
 - Height: ${data.user.height}cm
 - Weight: ${data.user.weight}kg
-- Health Conditions: ${data.user.healthConditions.join(', ')}
+- Health Conditions: ${data.user.healthConditions?.join(', ') || 'None reported'}
 
-Recent Data:
+Shoe Data:
 - Temperature Readings: ${JSON.stringify(data.shoe.temperature)}
-- Heart Rate: ${JSON.stringify(data.health.heartRate.samples)}
-- Activity Duration: ${data.health.activity.activitySeconds} seconds`
+- Stimulus Data: ${JSON.stringify(data.shoe.stimulus)}`;
+
+  // Only add health data if it exists and has the required properties
+  if (data.health) {
+    let healthData = '\n\nWearable Device Data:';
+    
+    // Safely add heart rate data if available
+    if (data.health.heartRate?.samples) {
+      healthData += `\n- Heart Rate: ${JSON.stringify(data.health.heartRate.samples)}`;
+    }
+    
+    // Safely add movement data if available
+    if (data.health.movement?.speedSamples) {
+      healthData += `\n- Movement Speed: ${JSON.stringify(data.health.movement.speedSamples)}`;
+    }
+    
+    // Safely add activity data if available
+    if (data.health.activity) {
+      if (data.health.activity.activityLevels) {
+        healthData += `\n- Activity Intensity: ${JSON.stringify(data.health.activity.activityLevels)}`;
+      }
+      if (data.health.activity.activitySeconds) {
+        healthData += `\n- Activity Duration: ${data.health.activity.activitySeconds} seconds`;
+      }
+    }
+
+    promptContent += healthData;
+  } else {
+    promptContent += '\n\nNote: No wearable device data available for this time period.';
+  }
+
+  return {
+    messages: [
+      {
+        role: "system",
+        content: `You are an AI health assistant specializing in analyzing foot temperature data from smart shoes. Your goal is to provide medically informed insights, correlating foot temperature trends with body thermoregulation, activity levels, and potential health conditions.
+
+        **Key Data Interpretation Guidelines:**
+        - Core Concept: Foot temperature reflects the body's thermoregulation
+        - Normal Foot Temperature Range: 29°C to 34°C (85°F to 93°F)
+        - Analyze patterns in temperature changes
+        - Consider activity levels when available
+        - Account for environmental factors
+        
+        **Output Structure:**
+        {
+          "status": "normal|warning|alert",
+          "insights": [
+            {
+              "type": "temperature|circulation|nerve|condition|health|activity",
+              "severity": "low|medium|high",
+              "description": "detailed explanation",
+              "recommendation": "specific action"
+            }
+          ],
+          "actions": [
+            {
+              "type": "appointment|medication|adjustment",
+              "urgency": "immediate|scheduled|optional",
+              "details": "detailed step-by-step instructions",
+              "parameters": {
+                "urls": ["primary url", "fallback urls"],
+                "formData": {
+                  "field1": "value1",
+                  "field2": "value2"
+                },
+                "successCriteria": "what defines success",
+                "fallbackSteps": ["step1", "step2"]
+              }
+            }
+          ],
+          "summary": "brief overall assessment"
+        }`
+      },
+      {
+        role: "user",
+        content: promptContent
       }
     ]
   };
@@ -142,39 +155,125 @@ Performance Metrics:
 }
 
 export function createAnalysisPrompt(data, preference) {
-  const basePrompt = preference === 'health' ? createHealthPrompt(data) : createPerformancePrompt(data);
-  
-  // Add common response format instruction
-  basePrompt.messages.push({
-    role: "system",
-    content: `Respond with a JSON object in this format:
-{
-  "status": "normal|warning|alert",
-  "insights": [
-    {
-      "type": "${preference === 'health' ? 'circulation|nerve|condition' : 'endurance|intensity|technique'}",
-      "severity": "low|medium|high",
-      "description": "detailed explanation",
-      "recommendation": "specific action"
+  let basePrompt = `Analyze this health-focused data:
+
+User Profile:
+- Age: ${data.user?.age || 'Not specified'}
+- Sex: ${data.user?.sex || 'Not specified'}
+- Height: ${data.user?.height || 'Not specified'}cm
+- Weight: ${data.user?.weight || 'Not specified'}kg
+- Health Conditions: ${data.user?.healthConditions?.join(', ') || 'None reported'}
+
+Shoe Data:
+- Temperature Readings: ${JSON.stringify(data.shoe?.temperature || [])}
+- Stimulus Data: ${JSON.stringify(data.shoe?.stimulus || [])}`;
+
+  // Only add health data if it exists and has valid data
+  if (data.health) {
+    let healthData = '\n\nWearable Device Data:';
+    
+    // Heart Rate Data
+    if (data.health.heartRate?.summary) {
+      healthData += `\nHeart Rate Summary:`;
+      if (data.health.heartRate.summary.avg_hr_bpm) {
+        healthData += `\n- Average: ${data.health.heartRate.summary.avg_hr_bpm} BPM`;
+      }
+      if (data.health.heartRate.summary.max_hr_bpm) {
+        healthData += `\n- Max: ${data.health.heartRate.summary.max_hr_bpm} BPM`;
+      }
+      if (data.health.heartRate.summary.min_hr_bpm) {
+        healthData += `\n- Min: ${data.health.heartRate.summary.min_hr_bpm} BPM`;
+      }
     }
-  ],
-  "actions": [
-    {
-      "type": "${preference === 'health' ? 'appointment|medication|adjustment' : 'training|recovery|equipment'}",
-      "urgency": "immediate|scheduled|optional",
-      "details": "action details"
+
+    // Movement Data
+    if (data.health.movement) {
+      healthData += `\n\nMovement Summary:`;
+      if (data.health.movement.distance) {
+        healthData += `\n- Distance: ${data.health.movement.distance} meters`;
+      }
+      if (data.health.movement.steps) {
+        healthData += `\n- Steps: ${data.health.movement.steps}`;
+      }
     }
-  ],
-  "summary": "brief overall assessment"
-}`
-  });
+
+    // Activity Data
+    if (data.health.activity) {
+      healthData += `\n\nActivity Summary:`;
+      if (data.health.activity.duration) {
+        healthData += `\n- Total Duration: ${data.health.activity.duration} seconds`;
+      }
+      if (data.health.activity.intensities) {
+        healthData += `\n- Low Intensity: ${data.health.activity.intensities.low} seconds`;
+        healthData += `\n- Moderate Intensity: ${data.health.activity.intensities.moderate} seconds`;
+        healthData += `\n- Vigorous Intensity: ${data.health.activity.intensities.vigorous} seconds`;
+      }
+    }
+
+    // Calories Data
+    if (data.health.calories) {
+      healthData += `\n\nCalories Summary:`;
+      if (data.health.calories.total) {
+        healthData += `\n- Total Burned: ${data.health.calories.total} calories`;
+      }
+      if (data.health.calories.active) {
+        healthData += `\n- Active Calories: ${data.health.calories.active} calories`;
+      }
+    }
+
+    basePrompt += healthData;
+  } else {
+    basePrompt += '\n\nNote: No wearable device data available for this time period.';
+  }
 
   return {
-    ...basePrompt,
-    model: "gpt-4o",
-    response_format: { type: "json_object" },
-    temperature: 0.4,
-    max_tokens: 1000
+    messages: [
+      {
+        role: "system",
+        content: `You are an AI health assistant specializing in analyzing foot temperature data from smart shoes. Your goal is to provide medically informed insights, correlating foot temperature trends with body thermoregulation, activity levels, and potential health conditions.
+
+        **Key Data Interpretation Guidelines:**
+        - Core Concept: Foot temperature reflects the body's thermoregulation
+        - Normal Foot Temperature Range: 29°C to 34°C (85°F to 93°F)
+        - Analyze patterns in temperature changes
+        - Consider activity levels when available
+        - Account for environmental factors
+        
+        **Output Structure:**
+        {
+          "status": "normal|warning|alert",
+          "insights": [
+            {
+              "type": "temperature|circulation|nerve|condition|health|activity",
+              "severity": "low|medium|high",
+              "description": "detailed explanation",
+              "recommendation": "specific action"
+            }
+          ],
+          "actions": [
+            {
+              "type": "appointment|medication|adjustment",
+              "urgency": "immediate|scheduled|optional",
+              "details": "detailed step-by-step instructions",
+              "parameters": {
+                "urls": ["primary url", "fallback urls"],
+                "formData": {
+                  "field1": "value1",
+                  "field2": "value2"
+                },
+                "successCriteria": "what defines success",
+                "fallbackSteps": ["step1", "step2"]
+              }
+            }
+          ],
+          "summary": "brief overall assessment"
+        }`
+      },
+      {
+        role: "user",
+        content: basePrompt
+      }
+    ]
   };
 }
 
@@ -182,7 +281,16 @@ export function validateOpenAIResponse(response) {
   try {
     console.log('Starting validation of response:', response);
     
-    const parsed = JSON.parse(response);
+    // Clean the response string if it contains markdown code blocks
+    let cleanResponse = response;
+    if (response.startsWith('```')) {
+      cleanResponse = response
+        .replace(/^```json\n/, '')  // Remove opening ```json
+        .replace(/\n```$/, '')      // Remove closing ```
+        .trim();
+    }
+    
+    const parsed = JSON.parse(cleanResponse);
     console.log('Successfully parsed JSON:', parsed);
     
     const requiredFields = ['status', 'insights', 'actions', 'summary'];
@@ -190,11 +298,9 @@ export function validateOpenAIResponse(response) {
     const validSeverities = ['low', 'medium', 'high'];
     const validUrgencies = ['immediate', 'scheduled', 'optional'];
     const validTypes = [
-      // Health types
       'temperature', 'circulation', 'nerve', 'condition', 'health', 'activity'
     ];
     const validActionTypes = [
-      // Health actions
       'appointment', 'medication', 'adjustment'
     ];
 
